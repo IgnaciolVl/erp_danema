@@ -22,6 +22,8 @@ load_dotenv()
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'clave-por-defecto-insegura')
+CHILEXPRESS_API_KEY = os.getenv('CHILEXPRESS_API_KEY', '')
+CHILEXPRESS_ENVIRONMENT = os.getenv('CHILEXPRESS_ENVIRONMENT', 'TEST')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
