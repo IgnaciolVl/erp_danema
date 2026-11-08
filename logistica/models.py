@@ -42,7 +42,16 @@ class Pedido(models.Model):
     tracking_chilexpress = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
+        # Arreglado: Todo en una sola línea para no romper la sintaxis de Python
         return f"Pedido #{self.id} - {self.cliente.nombre} - {self.estado}"
+
+    # AQUÍ ESTÁ LA CALCULADORA (El bloque que faltaba)
+    @property
+    def peso_total_kg(self):
+        total = 0
+        for detalle in self.detalles.all():
+            total += detalle.producto.peso_kg * detalle.cantidad
+        return round(total, 2)
 
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='detalles')
@@ -52,4 +61,3 @@ class DetallePedido(models.Model):
 
     def __str__(self):
         return f"{self.cantidad}x {self.producto.nombre} (Pedido #{self.pedido.id})"
-

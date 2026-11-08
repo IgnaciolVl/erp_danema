@@ -38,3 +38,29 @@ class ChilexpressAPI:
                 "status": "error",
                 "message": str(e)
             }
+    def cotizar_envio(self, origen, destino, peso_kg):
+        """
+        Cotiza un envío a Chilexpress usando origen, destino y peso.
+        """
+        endpoint = f"{self.base_url}/shipping/calculate"
+        payload = {
+            "origin": origen,
+            "destination": destino,
+            "weight_kg": peso_kg
+        }
+        
+        try:
+            response = requests.post(endpoint, json=payload, headers=self.headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            return {
+                "status": "success",
+                "cotizacion": data
+            }
+        except requests.exceptions.RequestException as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+        
