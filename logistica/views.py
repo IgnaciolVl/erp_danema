@@ -1,37 +1,65 @@
 from rest_framework import viewsets, mixins, status
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
-from .models import Producto, Pedido
-from .serializers import ProductoSerializer, PedidoSerializer
+from .models import Categoria, Subcategoria, Producto, Cliente, Pedido
+from .serializers import (
+    CategoriaSerializer, SubcategoriaSerializer, 
+    ProductoSerializer, ClienteSerializer, PedidoSerializer
+)
 from .chilexpress import ChilexpressAPI
 
-class ProductoViewSet(viewsets.ReadOnlyModelViewSet):
+
+class EsSuperAdminOSoloLectura(IsAuthenticated):
+    """RN-02: Solo SuperAdmins pueden crear, editar o borrar categorías."""
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return True
+        return bool(request.user and request.user.is_superuser)
+
+
+class CategoriaViewSet(viewsets.ModelViewSet):
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+    permission_classes = [EsSuperAdminOSoloLectura]
+
+
+class SubcategoriaViewSet(viewsets.ModelViewSet):
+    queryset = Subcategoria.objects.all()
+    serializer_class = SubcategoriaSerializer
+    permission_classes = [EsSuperAdminOSoloLectura]
+
+
+class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
+
+
+class ClienteViewSet(viewsets.ModelViewSet):
+    queryset = Cliente.objects.all()
+    serializer_class = ClienteSerializer
+
 
 class PedidoViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
 
     def create(self, request, *args, **kwargs):
-        # 1. El serializador recibe el JSON y descuenta el stock de la base de datos
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        pedido = serializer.save()
+        pedido = serializer.save(operador_bodega=request.user)
 
-        # 2. Nos comunicamos con Chilexpress
         chilexpress = ChilexpressAPI()
+        comuna_destino = pedido.direccion_envio.comuna.codigo_chilexpress
         
-        # Como aún no enviamos direcciones reales, haremos un cotizador de prueba
-        # usando el peso total que acabas de programar en models.py
         cotizacion = {
-            "mensaje": f"Pedido #{pedido.id} creado con éxito y stock descontado.",
+            "mensaje": f"Pedido #{pedido.id} registrado y stock descontado.",
+            "origen": "MOST",
+            "destino": comuna_destino,
             "peso_caja_kg": pedido.peso_total_kg,
-            "estado_chilexpress": "Pendiente de integración de origen/destino"
         }
 
-        # 3. Retornamos la respuesta al cliente
-        # Aquí sumamos la información del pedido (del serializador) más la cotización
         response_data = serializer.data
         response_data['logistica'] = cotizacion
-
         return Response(response_data, status=status.HTTP_201_CREATED)
